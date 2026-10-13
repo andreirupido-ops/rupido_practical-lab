@@ -1,35 +1,89 @@
 
-import { useState } from 'react'
-import Navbar from './components/navbar'
+import { useEffect, useState } from "react";
+import { Route, Routes, useLocation } from "react-router-dom";
+
+import Navbar from "./components/Navbar";
+import Home from "./pages/Home";
+import Users from "./pages/Users";
+import UserDetails from "./pages/UserDetails";
+import About from "./pages/About";
+import NotFound from "./pages/NotFound";
 
 function App() {
-  const [darkMode, setDarkMode] = useState(false)
+  const [darkMode, setDarkMode] = useState(
+    () => localStorage.getItem("darkMode") === "true"
+  );
+
+  const [favorites, setFavorites] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("favorites")) || [];
+    } catch {
+      return [];
+    }
+  });
+
+  const location = useLocation();
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", darkMode);
+    localStorage.setItem("darkMode", String(darkMode));
+  }, [darkMode]);
+
+  useEffect(() => {
+    localStorage.setItem("favorites", JSON.stringify(favorites));
+  }, [favorites]);
+
+  useEffect(() => {
+    const titles = {
+      "/": "Home",
+      "/users": "Team Members",
+      "/about": "About",
+    };
+
+    const isUserDetails = /^\/users\/\d+$/.test(location.pathname);
+    const pageTitle = titles[location.pathname]
+      || (isUserDetails ? "User Details" : "Page Not Found");
+
+    document.title = `${pageTitle} | Team Directory`;
+  }, [location.pathname]);
+
+  function toggleFavorite(userId) {
+    setFavorites((previousFavorites) =>
+      previousFavorites.includes(userId)
+        ? previousFavorites.filter((id) => id !== userId)
+        : [...previousFavorites, userId]
+    );
+  }
 
   return (
-    <div
-      className={`min-h-screen transition-colors ${
-        darkMode
-          ? 'bg-gray-950 text-white'
-          : 'bg-gray-100 text-gray-900'
-      }`}
-    >
+    <div className="min-h-screen bg-gray-100 text-gray-900 transition-colors dark:bg-gray-950 dark:text-white">
       <Navbar
-        favoritesCount={2}
+        favoritesCount={favorites.length}
         darkMode={darkMode}
-        onToggleDarkMode={() => setDarkMode(!darkMode)}
+        onToggleDarkMode={() => setDarkMode((previous) => !previous)}
       />
 
-      <main className="mx-auto max-w-6xl p-8">
-        <h1 className="text-3xl font-bold">
-          Welcome to Team Directory
-        </h1>
+      <Routes>
+        <Route path="/" element={<Home />} />
 
-        <p className="mt-3">
-          Your reusable Navbar is now connected!
-        </p>
-      </main>
+        <Route
+          path="/users"
+          element={
+            <Users
+              favorites={favorites}
+              onToggleFavorite={toggleFavorite}
+            />
+          }
+        />
+
+        <Route path="/users/:id" element={<UserDetails />} />
+
+        <Route path="/about" element={<About />} />
+
+        <Route path="*" element={<NotFound />} />
+      </Routes>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;
